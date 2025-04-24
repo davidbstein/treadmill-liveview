@@ -1,0 +1,1917 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>Treadmill Trainer</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: #111;
+      color: white;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+      /* Use 100dvh for dynamic viewport height */
+      height: 100dvh;
+      width: 100vw;
+      overflow: hidden; /* Prevent scrolling on body */
+      overscroll-behavior: none; /* Prevent pull-to-refresh/bounce */
+      position: fixed; /* Prevent scrolling */
+    }
+    body {
+      display: flex; /* Use flexbox for centering */
+      justify-content: center;
+      align-items: center;
+      box-sizing: border-box;
+    }
+
+    /* --- Screen Containers --- */
+    .screen {
+      display: none; /* Hidden by default */
+      width: 100%;
+      height: 100%;
+      max-width: 800px; /* Max width for content */
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start; /* Align content top */
+      padding: 3dvh 3dvw;
+      box-sizing: border-box;
+      overflow-y: auto; /* Allow vertical scroll within screen if needed */
+      -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
+    }
+    .screen.active {
+      display: flex; /* Show active screen */
+    }
+
+    /* --- Common Styles --- */
+    h2 {
+      color: #eee;
+      margin-top: 1dvh;
+      margin-bottom: 2dvh;
+      font-size: calc(1.5rem + 1dvw);
+      text-align: center;
+      flex-shrink: 0; /* Prevent shrinking */
+    }
+    button {
+      font-size: calc(1rem + 1.5dvw); /* Responsive font size */
+      padding: 0.6em 1.2em;
+      margin: 0.5em;
+      border: none;
+      border-radius: 8px;
+      background: #333;
+      color: white;
+      cursor: pointer;
+      transition: background-color 0.2s ease;
+      min-width: 150px; /* Minimum button width */
+      text-align: center;
+      flex-shrink: 0;
+      -webkit-tap-highlight-color: rgba(0,0,0,0); /* Remove tap highlight */
+    }
+    button:hover:not(:disabled) {
+      background: #555;
+    }
+    button:disabled {
+      background: #222;
+      cursor: not-allowed;
+      opacity: 0.6;
+    }
+    input, select {
+      padding: 0.6em;
+      margin: 0.4em;
+      border-radius: 5px;
+      border: 1px solid #555;
+      background: #222;
+      color: white;
+      font-size: calc(0.9rem + 1dvw);
+      box-sizing: border-box;
+    }
+    label {
+       font-size: calc(0.9rem + 1dvw);
+       margin-bottom: 0.2em;
+       margin-right: 0.5em;
+       align-self: center;
+    }
+
+    /* --- Workout List Screen --- */
+    #workoutListScreen ul {
+      list-style: none;
+      padding: 0;
+      width: 90%;
+      max-width: 550px;
+      margin-bottom: 1em;
+      flex-grow: 1; /* Allow list to take space */
+      overflow-y: auto; /* Scroll if list is long */
+    }
+    #workoutListScreen li {
+      background: #2a2a2a;
+      padding: 0.8em 1em;
+      margin-bottom: 0.6em;
+      border-radius: 5px;
+      cursor: pointer;
+      border: 2px solid transparent;
+      transition: border-color 0.2s ease, background-color 0.2s ease;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: calc(0.9rem + 0.8dvw);
+    }
+    #workoutListScreen li:hover {
+      background: #333;
+    }
+    #workoutListScreen li.selected {
+      border-color: #a287f4;
+      background: #3a3a4a;
+    }
+    #workoutListScreen .workout-label {
+      flex-grow: 1;
+      margin-right: 1em;
+      word-break: break-word; /* Prevent long labels overflowing */
+    }
+    #workoutListScreen .delete-btn {
+      background: #600;
+      color: white;
+      border: none;
+      padding: 0.4em 0.8em;
+      font-size: calc(0.8rem + 0.5dvw);
+      border-radius: 4px;
+      cursor: pointer;
+      margin-left: 0.5em; /* Reduced margin */
+      min-width: auto; /* Override default */
+      flex-shrink: 0;
+    }
+    #workoutListScreen .delete-btn:hover {
+      background: #800;
+    }
+    #workoutListScreen .button-group {
+        display: flex;
+        flex-wrap: wrap; /* Allow buttons to wrap */
+        justify-content: center;
+        width: 100%;
+        margin-top: auto; /* Push buttons to bottom */
+        padding-top: 1em; /* Space above buttons */
+        flex-shrink: 0;
+    }
+
+    /* --- Create Workout Screen --- */
+    #createWorkoutScreen {
+        justify-content: space-between; /* Push buttons to bottom */
+    }
+    #createWorkoutScreen .form-container {
+        width: 100%;
+        overflow-y: auto; /* Scrollable form area */
+        flex-grow: 1;
+        padding-bottom: 1em; /* Space before buttons */
+    }
+    #createWorkoutScreen .form-group {
+      margin-bottom: 1.5em;
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    #createWorkoutScreen .period-type-selector label {
+        margin-bottom: 0.5em;
+    }
+    #createWorkoutScreen .period-inputs {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        align-items: center;
+        gap: 0.5em; /* Spacing between inputs */
+        width: 100%;
+        padding: 0.5em;
+        background-color: #252525;
+        border-radius: 5px;
+        margin-top: 0.5em;
+    }
+    #createWorkoutScreen .period-inputs .input-group {
+        display: flex;
+        align-items: center;
+        margin: 0.2em 0;
+    }
+    #createWorkoutScreen .period-inputs input[type="number"] {
+        width: 65px; /* Slightly wider */
+        text-align: center;
+    }
+    #createWorkoutScreen .period-inputs select {
+        width: 90px; /* Slightly wider */
+    }
+    #periodsList {
+      list-style: none;
+      padding: 0;
+      width: 100%;
+      max-width: 600px;
+      margin-top: 1em;
+    }
+    #periodsList li {
+      background: #222;
+      padding: 0.7em;
+      margin-bottom: 0.5em;
+      border-radius: 5px;
+      display: flex;
+      justify-content: space-between; /* Align items */
+      align-items: center;
+      flex-wrap: wrap; /* Allow wrapping on small screens */
+      font-size: calc(0.9rem + 0.8dvw);
+    }
+     #periodsList li .period-desc {
+        flex-grow: 1;
+        margin-right: 1em;
+     }
+    #periodsList .remove-period-btn {
+      background: #555;
+      color: white;
+      border: none;
+      padding: 0.3em 0.6em;
+      font-size: calc(0.8rem + 0.5dvw);
+      border-radius: 4px;
+      cursor: pointer;
+      min-width: auto; /* Override default */
+      flex-shrink: 0;
+    }
+    #periodsList .remove-period-btn:hover {
+      background: #777;
+    }
+    #createWorkoutScreen .button-group {
+        display: flex;
+        justify-content: center;
+        width: 100%;
+        margin-top: 1em;
+        flex-shrink: 0; /* Prevent shrinking */
+    }
+
+
+    /* --- Workout Running Screen --- */
+    #workoutRunningScreen {
+      display: none; /* Hidden initially */
+      flex-direction: column; /* Default portrait layout */
+      align-items: center;
+      justify-content: space-between; /* Push controls down */
+      padding: 1dvh 1dvw; /* Minimal padding */
+    }
+    #workoutRunningScreen.active {
+      display: flex;
+    }
+
+    .running-content {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        width: 100%;
+        flex-grow: 1; /* Takes up available space */
+        justify-content: center; /* Center content vertically */
+    }
+
+    #chart-container {
+      width: 95dvw; /* Portrait width */
+      height: 15dvh; /* Portrait height */
+      display: flex;
+      align-items: flex-end; /* Bars grow up */
+      justify-content: flex-start;
+      position: relative;
+      margin-bottom: 1dvh;
+      border-bottom: 2px solid #333;
+      overflow: hidden;
+      flex-shrink: 0; /* Prevent shrinking */
+      position: relative;
+    }
+    #chart {
+      display: flex;
+      align-items: flex-end;
+      justify-content: flex-start;
+      position: absolute;
+      top: 0;
+      bottom: 10%;
+      left: 0;
+      right: 0;
+    }
+    .bar {
+      margin-right: 1px;
+      transition: background-color 0.3s ease, box-shadow 0.3s ease;
+      position: relative;
+      z-index: 1;
+      border-top: 1px solid rgba(255,255,255,0.1); /* Subtle top border */
+    }
+    /* Zone Colors & Heights (Portrait) */
+    .zoneZ1 { background: #a287f4; height: 60%; }
+    .zoneZ2 { background: #7ea7d8; height: 70%; }
+    .zoneZ3 { background: #8bd3c7; height: 80%; }
+    .zoneZ4 { background: #fdc086; height: 90%; }
+    .zoneZ5 { background: #fb8072; height: 100%; }
+    .zoneRest { background: #cccccc; height: 40%; } /* Rest zone style */
+
+    .bar.current-segment {
+    }
+
+    #progress-indicator {
+      position: absolute;
+      border-left: 3px solid white; /* White line indicating current time */
+      top: 0;
+      bottom: 0;
+      left: 0; /* Position controlled by JS */
+      right: 0;
+      transition: left 1s linear; /* Animate position change */
+      z-index: 3;
+      box-sizing: border-box;
+      pointer-events: none; /* Allow clicks through */
+      background: #0008;
+    }
+    #segmentProgressBarContainer {
+        width: 100%; /* Full width below chart */
+        height: 10%; /* Height of the segment bar */
+        overflow: hidden; /* Clip the progress bar */
+        flex-shrink: 0;
+        position: absolute;
+        left: 90%;
+        right: 0;
+        top: 0;
+        bottom: 0;
+    }
+    #segmentProgressBar {
+        border-right: 2px solid white;
+        border-top: 0;
+        background-color: #a287f4; /* Progress color */
+        transition: width 0.1s linear; /* Smooth progress */
+        position: absolute;
+        left: 0;
+        right: 100%;
+        top: 0;
+        bottom: 0;
+    }
+
+    .timers-and-labels {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        margin-top: 2dvh;
+        text-align: center;
+    }
+
+    #totalTimer {
+      font-size: clamp(1.5rem, 10dvh, 2rem); /* Responsive */
+      color: #ccc;
+      line-height: 1;
+    }
+    #segmentTimer {
+      font-size: clamp(3rem, 18dvh, 9rem); /* Responsive */
+      margin-top: -1dvh;
+      line-height: 1;
+    }
+    #segmentTypeLabel { /* Renamed from #label */
+      font-size: clamp(2.2rem, 5dvw, 2.5rem); /* Responsive */
+      color: #aaa;
+      margin-bottom: 0;
+      min-height: 1.2em;
+      line-height: 1.2;
+    }
+    #zonePaceInfo {
+        font-size: clamp(4rem, 4dvw, 1.8rem); /* Responsive */
+        color: #bbb;
+        margin-top: 0.5dvh;
+        min-height: 1.2em;
+        line-height: 1.2;
+    }
+
+    #runningControls {
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      width: 100%;
+      margin-top: auto; /* Push to bottom */
+      padding-top: 2dvh; /* Space above controls */
+      flex-shrink: 0;
+    }
+    #runningControls button {
+       font-size: calc(1rem + 1.5dvw);
+       margin: 0.3em 0.5em; /* Adjust margin */
+    }
+    #startWorkoutBtn {
+       background-color: #28a745; /* Green */
+    }
+    #startWorkoutBtn:hover:not(:disabled) {
+       background-color: #218838;
+    }
+    #stopBtn {
+        background-color: #dc3545; /* Red */
+    }
+    #stopBtn:hover:not(:disabled) {
+        background-color: #c82333;
+    }
+
+    /* --- Countdown Overlay --- */
+    #countdownOverlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100dvh;
+        background: rgba(0, 0, 0, 0.9);
+        color: white;
+        display: none; /* Hidden by default */
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        z-index: 1000;
+        text-align: center;
+        font-weight: bold;
+        pointer-events: none; /* Allow interaction with elements behind if needed */
+    }
+    #countdownOverlay.active {
+        display: flex;
+    }
+    #countdownTimer {
+        font-size: 30dvh;
+        line-height: 1;
+    }
+    #countdownNextSegment {
+        font-size: 8dvh;
+        margin-top: 2dvh;
+        color: #ccc;
+    }
+
+    /* --- Edit Paces Screen --- */
+    #editPacesScreen .pace-inputs {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        width: 90%;
+        max-width: 400px;
+        gap: 1em;
+        margin-bottom: 1em;
+        flex-grow: 1;
+        overflow-y: auto;
+    }
+    #editPacesScreen .pace-input-group {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        width: 100%;
+        background-color: #2a2a2a;
+        padding: 0.5em 1em;
+        border-radius: 5px;
+    }
+    #editPacesScreen label {
+        font-weight: bold;
+        color: #a287f4; /* Match Z1 color */
+        margin-right: 1em;
+    }
+    #editPacesScreen input[type="text"] { /* Using text for MM:SS format */
+        width: 100px;
+        text-align: center;
+    }
+     #editPacesScreen .button-group {
+        display: flex;
+        justify-content: center;
+        width: 100%;
+        margin-top: auto; /* Push buttons to bottom */
+        padding-top: 1em; /* Space above buttons */
+        flex-shrink: 0;
+    }
+
+    /* --- Landscape Orientation --- */
+    @media (orientation: landscape) {
+      #workoutRunningScreen {
+        flex-direction: row; /* Side-by-side layout */
+        justify-content: flex-start; /* Align chart left */
+        align-items: stretch; /* Stretch children vertically */
+      }
+      #chart-container {
+        width: 20dvw; /* Chart width in landscape */
+        height: calc(100dvh - 4dvh); /* Almost full height */
+        flex-direction: column; /* Stack chart elements vertically */
+        align-items: stretch; /* Stretch chart horizontally */
+        justify-content: flex-start;
+        border-bottom: none; /* Remove bottom border */
+        border-right: 2px solid #333; /* Add right border */
+        margin-bottom: 0;
+        margin-right: 1dvw; /* Space between chart and content */
+        padding: 1dvh 0; /* Vertical padding */
+        flex-shrink: 0;
+      }
+      #chart {
+        flex-direction: column-reverse; /* Bars stack vertically */
+        align-items: end; /* Bars take full width */
+        justify-content: flex-start;
+        width: 90%;
+        height: 100%; /* Take full height of container */
+        overflow: hidden; /* Prevent bar overflow */
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        left: 0;
+        right: 10%;
+      }
+      .bar {
+        margin-right: 0; /* No horizontal margin */
+        margin-bottom: 1px; /* Vertical margin */
+        /* Height becomes proportional width in landscape */
+        /* JS will set height based on duration */
+        flex-shrink: 0; /* Prevent bars from shrinking */
+      }
+       /* Zone Heights become Widths (approx) - JS sets actual height */
+      .zoneZ1 { width: 60%; height: auto; }
+      .zoneZ2 { width: 70%; height: auto; }
+      .zoneZ3 { width: 80%; height: auto; }
+      .zoneZ4 { width: 90%; height: auto; }
+      .zoneZ5 { width: 100%; height: auto; }
+      .zoneRest { width: 100%; height: auto; }
+
+      #progress-indicator {
+        border-left: none; /* Remove left border */
+        border-bottom: 3px solid white; /* White line indicating current time */
+        left: 0;
+        right: 10%;
+        top: 0; 
+        bottom: 0;/* Position controlled by JS */
+        transition: top 1s linear; /* Animate position change */
+      }
+       #segmentProgressBarContainer {
+        width: 10%; /* Width of the vertical segment bar */
+        height: 100%; /* Full height */
+        margin-top: 0;
+        order: 1; /* Place it after the chart div */
+        flex-direction: column; /* Stack vertically */
+        justify-content: flex-start; /* Align top */
+      }
+      #segmentProgressBar {
+        position: absolute;
+        top:100%;
+        bottom:0;
+        left:0;
+        right:0;
+        transition: all 0.1s linear; /* Smooth progress */
+        border-top: 2px solid white;
+        border-right: 0;
+      }
+
+      .running-content {
+        flex-grow: 1; /* Take remaining space */
+        height: 100%; /* Full height */
+        justify-content: space-between; /* Space out elements */
+        padding: 1dvh 2dvw; /* Padding for content area */
+        overflow-y: auto; /* Allow scroll if content overflows */
+      }
+      .timers-and-labels {
+        margin-top: 2dvh;
+        flex-grow: 1; /* Allow timers to take space */
+        justify-content: center; /* Center timers vertically */
+      }
+      #runningControls {
+        margin-top: 1dvh; /* Space above controls */
+        padding-top: 1dvh;
+        flex-shrink: 0; /* Prevent shrinking */
+      }
+      #totalTimer { font-size: clamp(2rem, 10dvh, 4rem); }
+      #segmentTimer { font-size: clamp(3rem, 30dvh, 7rem); }
+      #segmentTypeLabel { font-size: clamp(1.2rem, 4dvw, 2rem); }
+      #zonePaceInfo { font-size: clamp(1rem, 7.5dvw, 3rem); }
+    }
+
+  </style>
+</head>
+<body>
+
+  <div id="workoutListScreen" class="screen active">
+    <h2>Select Workout</h2>
+    <ul id="workouts"></ul>
+    <div class="button-group">
+        <button id="loadSelectedBtn" disabled>Load Selected</button>
+        <button id="createNewBtn">Create New</button>
+        <button id="editPacesBtn">Edit Paces</button>
+    </div>
+  </div>
+
+  <div id="createWorkoutScreen" class="screen">
+     <h2>Create Workout</h2>
+     <div class="form-container">
+        <div class="form-group">
+            <label>Periods Added:</label>
+            <ul id="periodsList">
+                </ul>
+        </div>
+
+        <div class="form-group">
+            <label for="periodTypeSelect">Add New Period:</label>
+            <select id="periodTypeSelect">
+                <option value="warmup">Warmup</option>
+                <option value="run">Run</option>
+                <option value="interval">Interval</option>
+                <option value="cooldown">Cooldown</option>
+            </select>
+        </div>
+
+        <div id="inputsWarmup" class="period-inputs form-group">
+             <div class="input-group">
+                <label for="warmupDurationMin">Duration:</label>
+                <input type="number" id="warmupDurationMin" min="0" max="59" placeholder="Min">m
+                <input type="number" id="warmupDurationSec" min="0" max="59" value="0" placeholder="Sec">s
+            </div>
+             <div class="input-group">
+                <label for="warmupZone">Zone:</label>
+                <select id="warmupZone">
+                    </select>
+            </div>
+        </div>
+
+        <div id="inputsRun" class="period-inputs form-group" style="display: none;">
+            <div class="input-group">
+                <label for="runDurationMin">Duration:</label>
+                <input type="number" id="runDurationMin" min="0" max="59" placeholder="Min">m
+                <input type="number" id="runDurationSec" min="0" max="59" value="0" placeholder="Sec">s
+            </div>
+             <div class="input-group">
+                <label for="runZone">Zone:</label>
+                <select id="runZone">
+                     </select>
+            </div>
+        </div>
+
+        <div id="inputsInterval" class="period-inputs form-group" style="display: none;">
+            <div class="input-group">
+                <label for="intervalReps">Reps:</label>
+                <input type="number" id="intervalReps" min="1" value="1" placeholder="Reps">
+            </div>
+            <div class="input-group">
+                <label for="intervalRunDurationMin">Run:</label>
+                <input type="number" id="intervalRunDurationMin" min="0" max="59" placeholder="Min">m
+                <input type="number" id="intervalRunDurationSec" min="0" max="59" value="0" placeholder="Sec">s
+                @
+                <select id="intervalRunZone">
+                     </select>
+            </div>
+            <div class="input-group">
+                <label for="intervalRestDurationMin">Rest:</label>
+                <input type="number" id="intervalRestDurationMin" min="0" max="59" placeholder="Min">m
+                <input type="number" id="intervalRestDurationSec" min="0" max="59" value="0" placeholder="Sec">s
+                @
+                <select id="intervalRestZone">
+                     </select>
+            </div>
+        </div>
+
+        <div id="inputsCooldown" class="period-inputs form-group" style="display: none;">
+             <div class="input-group">
+                <label for="cooldownDurationMin">Duration:</label>
+                <input type="number" id="cooldownDurationMin" min="0" max="59" placeholder="Min">m
+                <input type="number" id="cooldownDurationSec" min="0" max="59" value="0" placeholder="Sec">s
+            </div>
+             <div class="input-group">
+                <label for="cooldownZone">Zone:</label>
+                <select id="cooldownZone">
+                     </select>
+            </div>
+        </div>
+
+        <div class="form-group">
+             <button id="addPeriodBtn">Add Period</button>
+        </div>
+    </div>
+
+    <div class="button-group">
+        <button id="saveWorkoutBtn">Save Workout</button>
+        <button id="cancelCreateBtn">Cancel</button>
+    </div>
+  </div>
+
+  <div id="workoutRunningScreen" class="screen">
+    <div id="chart-container">
+        <div id="chart">
+            </div>
+        <div id="progress-indicator"></div>
+         <div id="segmentProgressBarContainer">
+            <div id="segmentProgressBar"></div>
+        </div>
+    </div>
+
+    <div class="running-content">
+        <div class="timers-and-labels">
+            <div id="totalTimer">00:00</div>
+            <div id="segmentTimer">00:00</div>
+            <div id="zonePaceInfo">Zone / Pace</div>
+            <div id="segmentTypeLabel">Ready</div>
+        </div>
+
+        <div id="runningControls">
+            <button id="startWorkoutBtn">Start</button>
+            <button id="pauseResumeBtn" style="display: none;">Pause</button>
+            <button id="stopBtn" style="display: none;">Stop</button>
+        </div>
+    </div>
+  </div>
+
+  <div id="editPacesScreen" class="screen">
+    <h2>Edit Zone Paces</h2>
+    <div class="pace-inputs">
+        </div>
+    <div class="button-group">
+        <button id="savePacesBtn">Save Paces</button>
+        <button id="cancelEditPacesBtn">Cancel</button>
+    </div>
+  </div>
+
+  <div id="countdownOverlay">
+    <div id="countdownTimer">3</div>
+    <div id="countdownNextSegment">Next: Run Z4</div>
+  </div>
+
+<script>
+  // --- Constants ---
+  const _countdown = 6;
+  const WORKOUT_STORAGE_KEY = 'treadmillWorkouts_v2';
+  const PACE_STORAGE_KEY = 'treadmillPaces_v1';
+  const DEFAULT_ZONE_PACES = {
+    Z1: '6:15', Z2: '5:45', Z3: '5:15', Z4: '4:45', Z5: '4:15', Z6: '3:45', Z7: '3:15', Rest: '8:00' // Added Rest
+  };
+  const ZONES = ['Z1', 'Z2', 'Z3', 'Z4', 'Z5', 'Z6', 'Z7', 'Rest'];
+
+  // --- Global State ---
+  let workouts = [];
+  let zonePaces = { ...DEFAULT_ZONE_PACES };
+  let currentWorkoutPeriods = []; // The structured workout periods being run
+  let currentFlatIntervals = []; // Unrolled intervals for running/charting
+  let tempPeriods = []; // Periods being added in the create screen
+  let selectedWorkoutIndex = -1;
+
+  let elapsed = 0;
+  let segmentElapsed = 0;
+  let running = false;
+  let paused = false;
+  let timerIntervalId = null;
+  let currentIntervalIndex = 0;
+  let audioCtx = null;
+  let wakeLockSentinel = null;
+  let countdownTimeoutId = null;
+
+  // --- DOM Elements ---
+  const workoutListScreen = document.getElementById('workoutListScreen');
+  const createWorkoutScreen = document.getElementById('createWorkoutScreen');
+  const workoutRunningScreen = document.getElementById('workoutRunningScreen');
+  const editPacesScreen = document.getElementById('editPacesScreen');
+
+  // Workout List
+  const workoutsUl = document.getElementById('workouts');
+  const loadSelectedBtn = document.getElementById('loadSelectedBtn');
+  const createNewBtn = document.getElementById('createNewBtn');
+  const editPacesBtn = document.getElementById('editPacesBtn');
+
+  // Create Workout
+  const periodsListUl = document.getElementById('periodsList');
+  const periodTypeSelect = document.getElementById('periodTypeSelect');
+  const addPeriodBtn = document.getElementById('addPeriodBtn');
+  const saveWorkoutBtn = document.getElementById('saveWorkoutBtn');
+  const cancelCreateBtn = document.getElementById('cancelCreateBtn');
+  const periodInputSections = {
+    warmup: document.getElementById('inputsWarmup'),
+    run: document.getElementById('inputsRun'),
+    interval: document.getElementById('inputsInterval'),
+    cooldown: document.getElementById('inputsCooldown')
+  };
+  const periodInputs = { // References to specific input fields
+      warmupDurationMin: document.getElementById('warmupDurationMin'),
+      warmupDurationSec: document.getElementById('warmupDurationSec'),
+      warmupZone: document.getElementById('warmupZone'),
+      runDurationMin: document.getElementById('runDurationMin'),
+      runDurationSec: document.getElementById('runDurationSec'),
+      runZone: document.getElementById('runZone'),
+      intervalReps: document.getElementById('intervalReps'),
+      intervalRunDurationMin: document.getElementById('intervalRunDurationMin'),
+      intervalRunDurationSec: document.getElementById('intervalRunDurationSec'),
+      intervalRunZone: document.getElementById('intervalRunZone'),
+      intervalRestDurationMin: document.getElementById('intervalRestDurationMin'),
+      intervalRestDurationSec: document.getElementById('intervalRestDurationSec'),
+      intervalRestZone: document.getElementById('intervalRestZone'),
+      cooldownDurationMin: document.getElementById('cooldownDurationMin'),
+      cooldownDurationSec: document.getElementById('cooldownDurationSec'),
+      cooldownZone: document.getElementById('cooldownZone'),
+  };
+
+
+  // Workout Running
+  const chartContainer = document.getElementById('charft-container');
+  const chartDiv = document.getElementById('chart');
+  const progressIndicator = document.getElementById('progress-indicator');
+  const segmentProgressBarContainer = document.getElementById('segmentProgressBarContainer');
+  const segmentProgressBar = document.getElementById('segmentProgressBar');
+  const totalTimerDisplay = document.getElementById('totalTimer');
+  const segmentTimerDisplay = document.getElementById('segmentTimer');
+  const segmentTypeLabel = document.getElementById('segmentTypeLabel');
+  const zonePaceInfoDisplay = document.getElementById('zonePaceInfo');
+  const startWorkoutBtn = document.getElementById('startWorkoutBtn');
+  const pauseResumeBtn = document.getElementById('pauseResumeBtn');
+  const stopBtn = document.getElementById('stopBtn');
+  let barElements = [];
+
+  // Edit Paces
+  const paceInputsContainer = document.getElementById('editPacesScreen').querySelector('.pace-inputs');
+  const savePacesBtn = document.getElementById('savePacesBtn');
+  const cancelEditPacesBtn = document.getElementById('cancelEditPacesBtn');
+
+  // Countdown Overlay
+  const countdownOverlay = document.getElementById('countdownOverlay');
+  const countdownTimerDisplay = document.getElementById('countdownTimer');
+  const countdownNextSegmentDisplay = document.getElementById('countdownNextSegment');
+
+
+  // --- Utility Functions ---
+  function formatTime(s) {
+    const m = Math.floor(s / 60);
+    const sec = s % 60;
+    return `${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
+  }
+
+  function parseTime(timeStr) { // Parses MM:SS into seconds
+      if (!timeStr || !timeStr.includes(':')) return 0;
+      const parts = timeStr.split(':');
+      const minutes = parseInt(parts[0], 10) || 0;
+      const seconds = parseInt(parts[1], 10) || 0;
+      return (minutes * 60) + seconds;
+  }
+
+  function showScreen(screenId) {
+    document.querySelectorAll('.screen').forEach(screen => {
+      screen.classList.remove('active');
+    });
+    const screenToShow = document.getElementById(screenId)
+    if (screenToShow) {
+        screenToShow.classList.add('active');
+        // Reset scroll position for screens that might scroll
+        if (screenId === 'workoutListScreen' || screenId === 'createWorkoutScreen' || screenId === 'editPacesScreen') {
+             screenToShow.scrollTop = 0;
+        }
+    } else {
+        console.error("Screen not found:", screenId);
+    }
+  }
+
+  function getDurationFromInputs(minInput, secInput) {
+      const minutes = parseInt(minInput.value, 10) || 0;
+      const seconds = parseInt(secInput.value, 10) || 0;
+      return (minutes * 60) + seconds;
+  }
+
+  function populateZoneSelect(selectElement) {
+      selectElement.innerHTML = ''; // Clear existing options
+      ZONES.forEach(zone => {
+          const option = document.createElement('option');
+          option.value = zone;
+          option.textContent = zone;
+          selectElement.appendChild(option);
+      });
+  }
+
+  function populateAllZoneSelects() {
+      populateZoneSelect(periodInputs.warmupZone);
+      populateZoneSelect(periodInputs.runZone);
+      populateZoneSelect(periodInputs.intervalRunZone);
+      populateZoneSelect(periodInputs.intervalRestZone);
+      populateZoneSelect(periodInputs.cooldownZone);
+      // Set defaults
+      periodInputs.warmupZone.value = 'Z1';
+      periodInputs.runZone.value = 'Z3';
+      periodInputs.intervalRunZone.value = 'Z4';
+      periodInputs.intervalRestZone.value = 'Rest'; // Default rest zone
+      periodInputs.cooldownZone.value = 'Z1';
+  }
+
+  // --- LocalStorage Functions ---
+  function loadData() {
+    // Load Workouts
+    const storedWorkouts = localStorage.getItem(WORKOUT_STORAGE_KEY);
+    if (storedWorkouts) {
+      try {
+        workouts = JSON.parse(storedWorkouts);
+        // Basic validation (check if it's an array)
+        if (!Array.isArray(workouts)) {
+            console.warn("Stored workout data is not an array, resetting.");
+            workouts = [];
+        }
+      } catch (e) {
+        console.error("Error parsing workouts from localStorage:", e);
+        workouts = [];
+      }
+    } else {
+        workouts = []; // Start empty if nothing stored
+    }
+
+    // Load Paces
+    const storedPaces = localStorage.getItem(PACE_STORAGE_KEY);
+    if (storedPaces) {
+        try {
+            const loadedPaces = JSON.parse(storedPaces);
+            // Validate loaded paces format if necessary
+            zonePaces = { ...DEFAULT_ZONE_PACES, ...loadedPaces }; // Merge, loaded overrides default
+        } catch (e) {
+            console.error("Error parsing paces from localStorage:", e);
+            zonePaces = { ...DEFAULT_ZONE_PACES }; // Reset to defaults on error
+        }
+    } else {
+        zonePaces = { ...DEFAULT_ZONE_PACES }; // Use defaults if nothing stored
+    }
+  }
+
+  function saveWorkouts() {
+    try {
+      localStorage.setItem(WORKOUT_STORAGE_KEY, JSON.stringify(workouts));
+    } catch (e) {
+      console.error("Error saving workouts:", e);
+      // Consider a more user-friendly error message
+    }
+  }
+
+  function savePaces() {
+     try {
+      localStorage.setItem(PACE_STORAGE_KEY, JSON.stringify(zonePaces));
+    } catch (e) {
+      console.error("Error saving paces:", e);
+      // Consider a more user-friendly error message
+    }
+  }
+
+  // --- Workout Label Generation ---
+  function generateWorkoutLabel(periods) {
+    if (!periods || periods.length === 0) return "Empty Workout";
+
+    let label = "";
+    let nonWarmupCooldownPeriods = [];
+
+    periods.forEach(p => {
+      if (p.type !== 'warmup' && p.type !== 'cooldown') {
+        nonWarmupCooldownPeriods.push(p);
+      }
+    });
+
+    if (nonWarmupCooldownPeriods.length === 0) {
+        // Handle case with only warmup/cooldown
+        const totalDuration = periods.reduce((sum, p) => sum + (p.duration || 0), 0);
+        return `${formatTime(totalDuration)} Recovery`;
+    }
+
+    label = nonWarmupCooldownPeriods.map(p => {
+      const durationStr = formatTime(p.duration);
+      switch (p.type) {
+        case 'run':
+          return `${durationStr}@${p.zone}`;
+        case 'interval':
+          const runDurationStr = formatTime(p.runDuration);
+          const restDurationStr = formatTime(p.restDuration);
+          return `${p.reps}x${runDurationStr}(${p.runZone}) [${restDurationStr}${p.restZone}]`;
+        default:
+          return ''; // Should not happen for nonWarmupCooldownPeriods
+      }
+    }).join('; ');
+
+    // Add warmup/cooldown indicators if they exist
+    const hasWarmup = periods.some(p => p.type === 'warmup');
+    const hasCooldown = periods.some(p => p.type === 'cooldown');
+    if (hasWarmup) label = "WU + " + label;
+    if (hasCooldown) label = label + " + CD";
+
+    return label;
+  }
+
+
+  // --- Workout Unrolling ---
+  function unrollWorkout(periods) {
+    const flatIntervals = [];
+    periods.forEach(period => {
+      switch (period.type) {
+        case 'warmup':
+        case 'cooldown':
+        case 'run':
+          flatIntervals.push({
+            type: period.type, // Keep original type
+            zone: period.zone,
+            duration: period.duration,
+            pace: zonePaces[period.zone] || ''
+          });
+          break;
+        case 'interval':
+          for (let i = 0; i < period.reps; i++) {
+            // Add run segment
+            flatIntervals.push({
+              type: 'run', // Unroll interval 'run' as type 'run'
+              zone: period.runZone,
+              duration: period.runDuration,
+              pace: zonePaces[period.runZone] || '',
+              isIntervalRun: true, // Mark as part of an interval
+              repNum: i + 1,
+              totalReps: period.reps
+            });
+            // Add rest segment (unless it's the very last rep)
+            if (i < period.reps - 1) {
+              flatIntervals.push({
+                type: 'rest', // Unroll interval 'rest' as type 'rest'
+                zone: period.restZone,
+                duration: period.restDuration,
+                pace: zonePaces[period.restZone] || '',
+                isIntervalRest: true, // Mark as part of an interval
+                repNum: i + 1,
+                totalReps: period.reps
+              });
+            }
+          }
+          break;
+      }
+    });
+    return flatIntervals;
+  }
+
+
+  // --- Workout List Screen Logic ---
+  function displayWorkoutList() {
+    workoutsUl.innerHTML = ''; // Clear existing list
+    if (workouts.length === 0) {
+        workoutsUl.innerHTML = '<li style="background: none; color: #888; text-align: center;">No workouts saved yet.</li>';
+    }
+    workouts.forEach((workout, index) => {
+      const li = document.createElement('li');
+      li.dataset.index = index;
+
+      const labelSpan = document.createElement('span');
+      labelSpan.className = 'workout-label';
+      labelSpan.textContent = generateWorkoutLabel(workout.periods); // Use new label function
+      li.appendChild(labelSpan);
+
+      const deleteBtn = document.createElement('button');
+      deleteBtn.textContent = 'Del'; // Shorter text
+      deleteBtn.className = 'delete-btn';
+      deleteBtn.onclick = (event) => {
+        event.stopPropagation();
+        // Simple confirm for now
+        if (confirm(`Delete this workout?\n(${labelSpan.textContent})`)) {
+          workouts.splice(index, 1);
+          saveWorkouts();
+          if (selectedWorkoutIndex === index) {
+            selectedWorkoutIndex = -1;
+            loadSelectedBtn.disabled = true;
+          } else if (selectedWorkoutIndex > index) {
+            selectedWorkoutIndex--;
+          }
+          displayWorkoutList(); // Refresh list
+        }
+      };
+      li.appendChild(deleteBtn);
+
+      li.addEventListener('click', () => {
+        const currentlySelected = workoutsUl.querySelector('.selected');
+        if (currentlySelected) {
+          currentlySelected.classList.remove('selected');
+        }
+        li.classList.add('selected');
+        selectedWorkoutIndex = index;
+        loadSelectedBtn.disabled = false;
+      });
+
+      if (index === selectedWorkoutIndex) {
+        li.classList.add('selected');
+      }
+      workoutsUl.appendChild(li);
+    });
+    loadSelectedBtn.disabled = selectedWorkoutIndex < 0;
+  }
+
+  createNewBtn.addEventListener('click', () => {
+    tempPeriods = [];
+    renderTempPeriods();
+    periodTypeSelect.value = 'warmup'; // Reset selector
+    updatePeriodInputVisibility(); // Show warmup inputs initially
+    resetCreateFormInputs();
+    showScreen('createWorkoutScreen');
+  });
+
+  loadSelectedBtn.addEventListener('click', () => {
+    if (selectedWorkoutIndex >= 0 && selectedWorkoutIndex < workouts.length) {
+      currentWorkoutPeriods = workouts[selectedWorkoutIndex].periods.map(p => ({...p})); // Deep copy
+      currentFlatIntervals = unrollWorkout(currentWorkoutPeriods);
+      if (currentFlatIntervals.length === 0) {
+          alert("Cannot load an empty workout.");
+          return;
+      }
+      initializeWorkoutUI();
+      showScreen('workoutRunningScreen');
+    } else {
+      alert("Please select a workout first.");
+    }
+  });
+
+  editPacesBtn.addEventListener('click', () => {
+      displayPaceEditor();
+      showScreen('editPacesScreen');
+  });
+
+  // --- Create Workout Screen Logic ---
+
+  // Update visible input section based on selected period type
+  periodTypeSelect.addEventListener('change', updatePeriodInputVisibility);
+
+  function updatePeriodInputVisibility() {
+      const selectedType = periodTypeSelect.value;
+      Object.keys(periodInputSections).forEach(type => {
+          periodInputSections[type].style.display = type === selectedType ? 'flex' : 'none';
+      });
+  }
+
+  function resetCreateFormInputs() {
+      // Reset common fields
+      Object.values(periodInputs).forEach(input => {
+          if (input.type === 'number') input.value = input.min || input.placeholder === 'Sec' ? '0' : '';
+          // Don't reset selects here, keep defaults
+      });
+      // Reset specific defaults if needed
+      periodInputs.intervalReps.value = '1';
+      periodInputs.warmupDurationMin.value = '5'; // Sensible default
+      periodInputs.runDurationMin.value = '10';
+      periodInputs.intervalRunDurationMin.value = '1';
+      periodInputs.intervalRestDurationSec.value = '30';
+      periodInputs.cooldownDurationMin.value = '5';
+      // Reset selects to defaults
+      populateAllZoneSelects();
+  }
+
+
+  function renderTempPeriods() {
+    periodsListUl.innerHTML = '';
+    tempPeriods.forEach((period, index) => {
+      const li = document.createElement('li');
+      const descSpan = document.createElement('span');
+      descSpan.className = 'period-desc';
+      let description = `${index + 1}. ${period.type.charAt(0).toUpperCase() + period.type.slice(1)}`;
+
+      switch (period.type) {
+          case 'warmup':
+          case 'cooldown':
+          case 'run':
+              description += `: ${formatTime(period.duration)} @ ${period.zone}`;
+              break;
+          case 'interval':
+              description += `: ${period.reps} x (${formatTime(period.runDuration)} @ ${period.runZone} / ${formatTime(period.restDuration)} @ ${period.restZone})`;
+              break;
+      }
+      descSpan.textContent = description;
+      li.appendChild(descSpan);
+
+      const removeBtn = document.createElement('button');
+      removeBtn.textContent = 'Remove';
+      removeBtn.className = 'remove-period-btn';
+      removeBtn.dataset.index = index;
+      removeBtn.addEventListener('click', (e) => {
+        const indexToRemove = parseInt(e.target.dataset.index, 10);
+        tempPeriods.splice(indexToRemove, 1);
+        renderTempPeriods();
+      });
+      li.appendChild(removeBtn);
+      periodsListUl.appendChild(li);
+    });
+  }
+
+  addPeriodBtn.addEventListener('click', () => {
+    const type = periodTypeSelect.value;
+    let newPeriod = { type };
+    let duration = 0;
+    let runDuration = 0;
+    let restDuration = 0;
+
+    try {
+        switch (type) {
+            case 'warmup':
+                duration = getDurationFromInputs(periodInputs.warmupDurationMin, periodInputs.warmupDurationSec);
+                if (duration <= 0) throw new Error("Warmup duration must be positive.");
+                newPeriod.duration = duration;
+                newPeriod.zone = periodInputs.warmupZone.value;
+                break;
+            case 'run':
+                duration = getDurationFromInputs(periodInputs.runDurationMin, periodInputs.runDurationSec);
+                 if (duration <= 0) throw new Error("Run duration must be positive.");
+                newPeriod.duration = duration;
+                newPeriod.zone = periodInputs.runZone.value;
+                break;
+            case 'interval':
+                const reps = parseInt(periodInputs.intervalReps.value, 10);
+                runDuration = getDurationFromInputs(periodInputs.intervalRunDurationMin, periodInputs.intervalRunDurationSec);
+                restDuration = getDurationFromInputs(periodInputs.intervalRestDurationMin, periodInputs.intervalRestDurationSec);
+                if (reps <= 0) throw new Error("Interval repetitions must be positive.");
+                if (runDuration <= 0) throw new Error("Interval run duration must be positive.");
+                if (restDuration < 0) throw new Error("Interval rest duration cannot be negative."); // Allow 0 rest
+                newPeriod.reps = reps;
+                newPeriod.runDuration = runDuration;
+                newPeriod.runZone = periodInputs.intervalRunZone.value;
+                newPeriod.restDuration = restDuration;
+                newPeriod.restZone = periodInputs.intervalRestZone.value;
+                break;
+            case 'cooldown':
+                duration = getDurationFromInputs(periodInputs.cooldownDurationMin, periodInputs.cooldownDurationSec);
+                 if (duration <= 0) throw new Error("Cooldown duration must be positive.");
+                newPeriod.duration = duration;
+                newPeriod.zone = periodInputs.cooldownZone.value;
+                break;
+            default:
+                throw new Error("Invalid period type selected.");
+        }
+
+        tempPeriods.push(newPeriod);
+        renderTempPeriods();
+        resetCreateFormInputs(); // Reset inputs for next period
+        periodTypeSelect.value = type; // Keep the same type selected
+        updatePeriodInputVisibility(); // Ensure correct inputs are shown
+
+    } catch (error) {
+        alert(`Error adding period: ${error.message}`);
+    }
+  });
+
+  saveWorkoutBtn.addEventListener('click', () => {
+    if (tempPeriods.length === 0) {
+      alert("Please add at least one period to the workout.");
+      return;
+    }
+
+    // Simple validation: Ensure warmup is first and cooldown is last if they exist
+    const warmupIndex = tempPeriods.findIndex(p => p.type === 'warmup');
+    const cooldownIndex = tempPeriods.findIndex(p => p.type === 'cooldown');
+    if (warmupIndex > 0) {
+        alert("Warmup period must be the first period.");
+        return;
+    }
+    if (cooldownIndex !== -1 && cooldownIndex < tempPeriods.length - 1) {
+         alert("Cooldown period must be the last period.");
+        return;
+    }
+
+    const newWorkout = {
+      periods: tempPeriods // Use the collected periods
+    };
+    workouts.push(newWorkout);
+    saveWorkouts();
+    selectedWorkoutIndex = workouts.length - 1;
+    displayWorkoutList();
+    showScreen('workoutListScreen');
+  });
+
+  cancelCreateBtn.addEventListener('click', () => {
+    if (tempPeriods.length > 0) {
+      if (!confirm("Discard unsaved changes to this workout?")) {
+        return;
+      }
+    }
+    showScreen('workoutListScreen');
+  });
+
+  // --- Edit Paces Screen Logic ---
+  function displayPaceEditor() {
+      paceInputsContainer.innerHTML = ''; // Clear previous inputs
+      ZONES.forEach(zone => {
+          if (zone === 'Rest' && !DEFAULT_ZONE_PACES.Rest) return; // Skip Rest if not defined in defaults
+
+          const group = document.createElement('div');
+          group.className = 'pace-input-group';
+
+          const label = document.createElement('label');
+          label.htmlFor = `paceInput${zone}`;
+          label.textContent = `${zone}:`;
+          group.appendChild(label);
+
+          const input = document.createElement('input');
+          input.type = 'text'; // Use text to allow MM:SS format
+          input.id = `paceInput${zone}`;
+          input.dataset.zone = zone;
+          // Format the stored seconds back to MM:SS for display
+          input.value = zonePaces[zone] || DEFAULT_ZONE_PACES[zone] || '0:00';
+          input.placeholder = "MM:SS";
+          input.pattern = "\\d{1,2}:\\d{2}"; // Basic pattern validation
+          group.appendChild(input);
+
+          paceInputsContainer.appendChild(group);
+      });
+  }
+
+  savePacesBtn.addEventListener('click', () => {
+      const inputs = paceInputsContainer.querySelectorAll('input');
+      let valid = true;
+      inputs.forEach(input => {
+          const zone = input.dataset.zone;
+          const value = input.value.trim();
+          // Validate MM:SS format
+          if (!/^\d{1,2}:\d{2}$/.test(value)) {
+              alert(`Invalid format for ${zone}. Please use MM:SS (e.g., 5:30).`);
+              input.focus();
+              valid = false;
+              return; // Exit forEach iteration early if invalid
+          }
+          if (valid) {
+             zonePaces[zone] = value; // Store as MM:SS string
+          }
+      });
+
+      if (valid) {
+          savePaces();
+          alert("Paces saved successfully!");
+          // If a workout is loaded, update its pace info
+          if (currentFlatIntervals.length > 0) {
+              currentFlatIntervals = unrollWorkout(currentWorkoutPeriods); // Re-unroll with new paces
+              // Update UI immediately if running screen is active
+              if (workoutRunningScreen.classList.contains('active')) {
+                  updateZonePaceDisplay(currentIntervalIndex);
+              }
+          }
+          showScreen('workoutListScreen'); // Go back to list after saving
+      }
+  });
+
+  cancelEditPacesBtn.addEventListener('click', () => {
+      // Optionally confirm discard changes
+      showScreen('workoutListScreen');
+  });
+
+
+  // --- Workout Running Screen Logic ---
+
+  function initializeWorkoutUI() {
+    chartDiv.innerHTML = ''; // Clear previous chart content
+    barElements = [];
+
+    // Ensure flat intervals are ready
+    if (!currentFlatIntervals || currentFlatIntervals.length === 0) {
+        console.error("Cannot initialize UI: No intervals to display.");
+        // Potentially show an error message to the user and return to list screen
+        alert("Error: Workout data is empty or invalid.");
+        showScreen('workoutListScreen');
+        return;
+    }
+
+
+    const totalDuration = currentFlatIntervals.reduce((sum, i) => sum + i.duration, 0);
+    const isLandscape = window.matchMedia("(orientation: landscape)").matches;
+
+    // Create bars
+    currentFlatIntervals.forEach((interval, index) => {
+      const bar = document.createElement('div');
+      // Use interval.type ('run', 'rest', 'warmup', 'cooldown') for base class if needed
+      // Use interval.zone for color styling
+      const zoneClass = `zone${interval.zone}`;
+      bar.className = `bar ${zoneClass}`;
+      bar.dataset.index = index;
+
+      if (isLandscape) {
+          // In landscape, height is proportional to duration
+          bar.style.height = totalDuration > 0 ? `${(interval.duration / totalDuration) * 100}%` : '0%';
+          // bar.style.width = '100%'; // Bars take full width
+      } else {
+          // In portrait, width is proportional to duration
+          bar.style.width = totalDuration > 0 ? `${(interval.duration / totalDuration) * 100}%` : '0%';
+          // Height is determined by CSS based on zone class
+      }
+
+      chartDiv.appendChild(bar);
+      barElements.push(bar);
+    });
+
+    // Reset timers and state
+    elapsed = 0;
+    segmentElapsed = 0;
+    running = false;
+    paused = false;
+    currentIntervalIndex = 0;
+    if (timerIntervalId) clearInterval(timerIntervalId);
+    timerIntervalId = null;
+    if (countdownTimeoutId) clearTimeout(countdownTimeoutId);
+    countdownTimeoutId = null;
+    countdownOverlay.classList.remove('active'); // Ensure countdown is hidden
+
+    totalTimerDisplay.textContent = formatTime(0);
+    segmentTimerDisplay.textContent = formatTime(currentFlatIntervals[0]?.duration || 0);
+    segmentTypeLabel.textContent = "Ready"; // Initial label
+    updateZonePaceDisplay(0); // Show initial zone/pace
+    updateProgressVisuals(); // Initial visual state (progress at 0)
+    updateSegmentProgressBar(); // Reset segment progress bar
+
+    // UI State for Ready (Not Started)
+    startWorkoutBtn.style.display = 'inline-block';
+    pauseResumeBtn.style.display = 'none';
+    stopBtn.style.display = 'inline-block'; // Show stop button
+    stopBtn.textContent = "Back"; // Stop button goes back initially
+    stopBtn.disabled = false;
+    pauseResumeBtn.textContent = "Pause";
+
+    // Ensure correct layout for orientation
+    handleOrientationChange();
+  }
+
+  function updateProgressVisuals() {
+    if (!currentFlatIntervals || currentFlatIntervals.length === 0) return;
+
+    const totalDuration = currentFlatIntervals.reduce((sum, i) => sum + i.duration, 0);
+    const percent = totalDuration > 0 ? (elapsed / totalDuration) * 100 : 0;
+    const isLandscape = window.matchMedia("(orientation: landscape)").matches;
+
+    if (progressIndicator) {
+        if (isLandscape) {
+            progressIndicator.style.bottom = `${Math.min(100, percent)}%`;
+            progressIndicator.style.left = '0'; // Ensure it spans width
+        } else {
+            progressIndicator.style.left = `${Math.min(100, percent)}%`;
+            progressIndicator.style.top = '0'; // Ensure it spans height
+        }
+    }
+
+    // Highlight the current segment bar
+    barElements.forEach((bar, index) => {
+      bar.classList.toggle('current-segment', index === currentIntervalIndex && running && !paused);
+    });
+  }
+
+   function updateSegmentProgressBar() {
+        if (!running || currentIntervalIndex >= currentFlatIntervals.length) {
+            segmentProgressBar.style.top = '0';
+            if (window.matchMedia("(orientation: landscape)").matches) {
+                 segmentProgressBar.style.right = '0';
+            }
+            return;
+        }
+        const currentSegmentDuration = currentFlatIntervals[currentIntervalIndex].duration;
+        const percent = currentSegmentDuration > 0 ? (segmentElapsed / currentSegmentDuration) * 100 : 0;
+
+        if (window.matchMedia("(orientation: landscape)").matches) {
+             segmentProgressBar.style.right = '0'; // Full width in landscape container
+             segmentProgressBar.style.top = `${100-Math.min(100, percent)}%`;
+        } else {
+            segmentProgressBar.style.top = '0'; // Full height in portrait container
+            segmentProgressBar.style.right = `${100-Math.min(100, percent)}%`;
+        }
+   }
+
+   function updateZonePaceDisplay(index) {
+       if (index >= 0 && index < currentFlatIntervals.length) {
+           const interval = currentFlatIntervals[index];
+           const paceText = interval.pace ? `(${interval.pace}/km)` : ''; // Assuming km
+           zonePaceInfoDisplay.textContent = `${interval.zone} ${paceText}`;
+       } else {
+           zonePaceInfoDisplay.textContent = ""; // Clear if index is out of bounds
+       }
+   }
+
+  function speak(text) {
+    // Basic sanitization for speech
+    const cleanText = text.replace(/Z([1-7])/g, 'Zone $1').replace('Rest', 'Resting');
+    if ('speechSynthesis' in window) {
+      try {
+        // Cancel any previous speech first
+        window.speechSynthesis.cancel();
+        const msg = new SpeechSynthesisUtterance(cleanText);
+        msg.rate = 1.1; // Slightly faster
+        // Attempt to find a suitable voice (optional, browser-dependent)
+        // const voices = window.speechSynthesis.getVoices();
+        // msg.voice = voices.find(v => v.lang.startsWith('en') && /female/i.test(v.name)) || voices[0];
+        window.speechSynthesis.speak(msg);
+      } catch (error) {
+        console.error("Speech synthesis error:", error);
+      }
+    }
+  }
+
+  function initAudioContext() {
+    if (!audioCtx && (window.AudioContext || window.webkitAudioContext)) {
+      try {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        // Resume context if suspended (required by browsers after user interaction)
+        if (audioCtx.state === 'suspended') {
+          audioCtx.resume();
+        }
+      } catch (e) {
+        console.error("Could not create AudioContext:", e);
+        audioCtx = null;
+      }
+    } else if (audioCtx && audioCtx.state === 'suspended') {
+        // Attempt to resume existing suspended context
+        audioCtx.resume().catch(e => console.error("Error resuming AudioContext:", e));
+    }
+  }
+
+  function beep(frequency = 880, duration = 0.15, volume = 0.15) {
+    if (!audioCtx || audioCtx.state !== 'running') {
+        console.log("AudioContext not ready for beep, attempting to resume...");
+        initAudioContext(); // Try to init/resume
+        // Try again shortly after potential resume
+        setTimeout(() => {
+             if (audioCtx && audioCtx.state === 'running') {
+                 console.log("AudioContext resumed, trying beep again.");
+                 beep(frequency, duration, volume);
+             } else {
+                 console.warn("AudioContext still not running after resume attempt.");
+             }
+        }, 200);
+      return;
+    }
+    try {
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.frequency.value = frequency;
+      gain.gain.setValueAtTime(volume, audioCtx.currentTime);
+      osc.start(audioCtx.currentTime);
+      osc.stop(audioCtx.currentTime + duration);
+    } catch (error) {
+      console.error("AudioContext error during beep:", error);
+    }
+  }
+
+  function getSegmentSpeechLabel(interval) {
+      if (!interval) return "";
+      // Announce type, add rep count for intervals
+      let label = interval.type.charAt(0).toUpperCase() + interval.type.slice(1);
+      if (interval.isIntervalRun) {
+          label = `Run ${interval.repNum} of ${interval.totalReps}`;
+      } else if (interval.isIntervalRest) {
+           label = `Rest ${interval.repNum} of ${interval.totalReps}`;
+      }
+      return label;
+  }
+
+  function getSegmentDisplayLabel(interval) {
+       if (!interval) return "Finished";
+       let label = interval.type.charAt(0).toUpperCase() + interval.type.slice(1);
+        if (interval.isIntervalRun || interval.isIntervalRest) {
+            label += ` (${interval.repNum}/${interval.totalReps})`;
+        }
+        return label;
+  }
+
+   function showCountdown(seconds, nextInterval) {
+        if (seconds <= 0 || !nextInterval) {
+            countdownOverlay.classList.remove('active');
+            if (countdownTimeoutId) clearTimeout(countdownTimeoutId);
+            countdownTimeoutId = null;
+            return;
+        }
+
+        countdownTimerDisplay.textContent = seconds;
+        const nextLabel = getSegmentDisplayLabel(nextInterval);
+        const nextPace = nextInterval.pace ? `(${nextInterval.pace}/km)` : '';
+        countdownNextSegmentDisplay.textContent = `Next: ${nextLabel} ${nextInterval.zone} ${nextPace}`;
+        countdownOverlay.classList.add('active');
+
+        beep(660, 0.1, 0.1); // Lower pitch beep for countdown
+
+        countdownTimeoutId = setTimeout(() => {
+            showCountdown(seconds - 1, nextInterval);
+        }, 1000);
+    }
+
+
+  function nextSegment() {
+    // Clear any active countdown
+    countdownOverlay.classList.remove('active');
+    if (countdownTimeoutId) clearTimeout(countdownTimeoutId);
+    countdownTimeoutId = null;
+
+    // Check for workout completion
+    if (currentIntervalIndex >= currentFlatIntervals.length) {
+      clearInterval(timerIntervalId);
+      timerIntervalId = null;
+      running = false;
+      paused = false;
+      releaseWakeLock();
+      const endMessage = "Workout complete!";
+      speak(endMessage);
+      segmentTypeLabel.textContent = endMessage;
+      zonePaceInfoDisplay.textContent = ""; // Clear zone/pace
+      totalTimerDisplay.textContent = formatTime(elapsed); // Ensure final time shown
+      segmentTimerDisplay.textContent = formatTime(0); // Clear segment timer
+
+      // UI State for Finished
+      startWorkoutBtn.style.display = 'none';
+      pauseResumeBtn.style.display = 'none';
+      stopBtn.style.display = 'inline-block';
+      stopBtn.textContent = "Back"; // Stop goes back
+      stopBtn.disabled = false;
+
+      // Ensure last bar is de-highlighted and progress is full
+      if(barElements[currentIntervalIndex-1]) {
+        barElements[currentIntervalIndex-1].classList.remove('current-segment');
+      }
+      if (progressIndicator) {
+         if (window.matchMedia("(orientation: landscape)").matches) {
+             progressIndicator.style.top = '100%';
+         } else {
+             progressIndicator.style.left = '100%';
+         }
+      }
+      segmentProgressBar.style.width = '0%'; // Reset segment progress
+      if (window.matchMedia("(orientation: landscape)").matches) {
+         segmentProgressBar.style.height = '0%';
+      }
+      return;
+    }
+
+    // Proceed to the next segment
+    const segment = currentFlatIntervals[currentIntervalIndex];
+    const speechLabel = getSegmentSpeechLabel(segment);
+    const displayLabel = getSegmentDisplayLabel(segment);
+
+    segmentTypeLabel.textContent = displayLabel;
+    updateZonePaceDisplay(currentIntervalIndex);
+    speak(speechLabel); // Speak only the type/rep info
+
+    segmentElapsed = 0;
+    segmentTimerDisplay.textContent = formatTime(segment.duration);
+    updateProgressVisuals(); // Highlight the new bar
+    updateSegmentProgressBar(); // Reset segment progress bar
+    beep(1046, 0.15, 0.2); // Higher pitch beep for segment start
+  }
+
+  function tick() {
+    if (!running || paused) return;
+
+    elapsed++;
+    segmentElapsed++;
+
+    totalTimerDisplay.textContent = formatTime(elapsed);
+    const currentSegment = currentFlatIntervals[currentIntervalIndex];
+    const segmentRemaining = currentSegment.duration - segmentElapsed;
+    segmentTimerDisplay.textContent = formatTime(Math.max(0, segmentRemaining));
+
+    updateProgressVisuals();
+    updateSegmentProgressBar();
+
+    // Trigger countdown for the *next* segment
+    const nextInterval = currentFlatIntervals[currentIntervalIndex + 1];
+    if (segmentRemaining === _countdown && nextInterval) {
+        showCountdown(_countdown, nextInterval);
+    } else if (segmentRemaining < _countdown && segmentRemaining > 0) {
+        // Continue beeps if countdown wasn't shown (e.g., very short segment)
+        if (!countdownOverlay.classList.contains('active')) {
+             beep();
+        }
+    }
+
+    // Check if segment finished
+    if (segmentElapsed >= currentSegment.duration) {
+        // Use a tiny delay to ensure the final second displays correctly
+        // and to allow the final countdown beep/display to finish.
+        setTimeout(() => {
+            if (!running || paused) return; // Check again in case stopped/paused during timeout
+            currentIntervalIndex++;
+            nextSegment(); // Move to the next segment logic
+         }, 50); // Short delay
+    }
+
+    // Check for overall workout completion (redundant check, handled by nextSegment)
+    // const totalDuration = currentFlatIntervals.reduce((sum, i) => sum + i.duration, 0);
+    // if (elapsed >= totalDuration && currentIntervalIndex < currentFlatIntervals.length) {
+    //     // This case should be handled by the segmentElapsed check triggering nextSegment
+    //     console.log("Tick: Reached total duration, ensuring final segment transition.");
+    // }
+  }
+
+  function startTimerSequence() {
+    if (running && !paused) return; // Already running
+
+    initAudioContext(); // Ensure audio context is ready (important on iOS)
+
+    // Pre-load voices (helps on some browsers)
+    if ('speechSynthesis' in window && window.speechSynthesis.getVoices().length === 0) {
+        window.speechSynthesis.getVoices();
+    }
+
+    // If paused, just resume
+    if (paused) {
+        paused = false;
+        running = true;
+        pauseResumeBtn.textContent = "Pause";
+        speak("Resuming");
+        requestWakeLock();
+        initAudioContext(); // Re-ensure context after interaction
+        updateProgressVisuals(); // Update highlight immediately
+        // Timer interval is already running, tick() will resume processing
+        return;
+    }
+
+    // --- Starting fresh ---
+    running = true;
+    paused = false;
+
+    // UI State for Running
+    startWorkoutBtn.style.display = 'none';
+    pauseResumeBtn.style.display = 'inline-block';
+    pauseResumeBtn.textContent = "Pause";
+    pauseResumeBtn.disabled = false;
+    stopBtn.textContent = "Stop"; // Stop button now stops workout
+    stopBtn.disabled = false;
+
+    requestWakeLock();
+    speak('Starting workout');
+
+    // Reset timers only if starting from the very beginning
+    if (elapsed === 0) {
+        segmentElapsed = 0;
+        currentIntervalIndex = 0;
+        updateZonePaceDisplay(0); // Ensure initial display is correct
+    } else {
+        // Resuming from a stopped state (not paused) - keep elapsed time
+        // Need to recalculate segmentElapsed based on elapsed time
+        let timeAccounted = 0;
+        let foundCurrent = false;
+        for(let i = 0; i < currentFlatIntervals.length; i++) {
+            if (elapsed >= timeAccounted + currentFlatIntervals[i].duration) {
+                timeAccounted += currentFlatIntervals[i].duration;
+            } else {
+                currentIntervalIndex = i;
+                segmentElapsed = elapsed - timeAccounted;
+                foundCurrent = true;
+                break;
+            }
+        }
+        if (!foundCurrent) { // Should not happen if elapsed > 0
+            console.error("Could not determine current interval on resume from stop.");
+            // Resetting as a fallback
+            elapsed = 0;
+            segmentElapsed = 0;
+            currentIntervalIndex = 0;
+        }
+         updateZonePaceDisplay(currentIntervalIndex);
+    }
+
+
+    // Small delay before first segment announcement/tick
+    setTimeout(() => {
+        if (!running) return; // Check if stopped immediately
+        nextSegment(); // Announce first segment (or current if resuming)
+        if (timerIntervalId) clearInterval(timerIntervalId);
+        timerIntervalId = setInterval(tick, 1000);
+    }, 500);
+  }
+
+  // Event Listener for the Start Button
+  startWorkoutBtn.addEventListener('click', startTimerSequence);
+
+  // Pause/Resume Button Logic
+  pauseResumeBtn.addEventListener('click', () => {
+    if (!running) return; // Can't pause if not running
+
+    // If currently running, pause it
+    if (!paused) {
+        paused = true;
+        pauseResumeBtn.textContent = "Resume";
+        speak("Paused");
+        releaseWakeLock();
+        // Clear countdown if paused during it
+        countdownOverlay.classList.remove('active');
+        if (countdownTimeoutId) clearTimeout(countdownTimeoutId);
+        countdownTimeoutId = null;
+        // Timer interval keeps running, but tick() function bails out.
+        // De-highlight current segment visually
+         if (barElements[currentIntervalIndex]) {
+            barElements[currentIntervalIndex].classList.remove('current-segment');
+        }
+    } else {
+        // If currently paused, resume it (handled by startTimerSequence)
+        startTimerSequence();
+    }
+  });
+
+  // Stop Button Logic
+  stopBtn.addEventListener('click', () => {
+    // If workout is finished OR not running yet, button acts as "Back"
+    const totalDuration = currentFlatIntervals.reduce((sum, i) => sum + i.duration, 0);
+     // Check if finished (index out of bounds) or not started (running is false and not paused)
+    if (currentIntervalIndex >= currentFlatIntervals.length || (!running && !paused)) {
+        clearInterval(timerIntervalId);
+        timerIntervalId = null;
+        releaseWakeLock();
+        running = false;
+        paused = false;
+        currentWorkoutPeriods = []; // Clear loaded workout
+        currentFlatIntervals = [];
+        showScreen('workoutListScreen');
+        return;
+    }
+
+    // If running or paused, confirm stopping the workout
+    // if (confirm("Stop the current workout and reset?")) {
+    //     clearInterval(timerIntervalId);
+    //     timerIntervalId = null;
+    //     running = false;
+    //     paused = false;
+    //     releaseWakeLock();
+    //     speak("Workout stopped");
+    //     // Clear countdown if stopped during it
+    //     countdownOverlay.classList.remove('active');
+    //     if (countdownTimeoutId) clearTimeout(countdownTimeoutId);
+    //     countdownTimeoutId = null;
+    //     // Reset UI to the 'Ready to Start' state for THIS workout
+    //     initializeWorkoutUI(); // Resets timers, labels, buttons, progress
+    //     // User stays on the running screen, ready to start again or go back
+    // }
+  });
+
+  // --- Wake Lock Functions ---
+  const requestWakeLock = async () => {
+    if ('wakeLock' in navigator) {
+      try {
+        // Release existing lock first, if any
+        await releaseWakeLock();
+        wakeLockSentinel = await navigator.wakeLock.request('screen');
+        wakeLockSentinel.addEventListener('release', () => {
+          // Wake lock was released unexpectedly (e.g., tab hidden)
+          console.log('Screen Wake Lock released by system.');
+          // Only re-acquire if the workout is supposed to be running and visible
+          if (running && !paused && document.visibilityState === 'visible') {
+            console.log('Attempting to re-acquire wake lock.');
+            requestWakeLock(); // Try to re-acquire
+          } else {
+             wakeLockSentinel = null; // Ensure sentinel is null if not re-acquiring
+          }
+        });
+        console.log('Screen Wake Lock acquired.');
+      } catch (err) {
+        console.error(`Wake Lock Error: ${err.name}, ${err.message}`);
+        wakeLockSentinel = null;
+      }
+    } else {
+      console.log('Wake Lock API not supported.');
+    }
+  };
+
+  const releaseWakeLock = async () => {
+    if (wakeLockSentinel !== null) {
+      try {
+        await wakeLockSentinel.release();
+        console.log('Screen Wake Lock released manually.');
+      } catch (err) {
+        console.error(`Wake Lock Release Error: ${err.name}, ${err.message}`);
+      } finally {
+        wakeLockSentinel = null;
+      }
+    }
+  };
+
+  // Re-acquire wake lock when tab becomes visible again, if needed
+  const handleVisibilityChange = () => {
+    if (wakeLockSentinel === null && running && !paused && document.visibilityState === 'visible') {
+      console.log("Re-acquiring wake lock on visibility change.");
+      requestWakeLock();
+    }
+  };
+  document.addEventListener('visibilitychange', handleVisibilityChange);
+
+  // --- Orientation Change Handling ---
+  function handleOrientationChange() {
+      const isLandscape = window.matchMedia("(orientation: landscape)").matches;
+      // If workout screen is active, re-initialize UI elements that depend on orientation
+      if (workoutRunningScreen.classList.contains('active') && currentFlatIntervals.length > 0) {
+           // Re-calculate bar dimensions and progress indicator position
+           const totalDuration = currentFlatIntervals.reduce((sum, i) => sum + i.duration, 0);
+
+           barElements.forEach((bar, index) => {
+               const interval = currentFlatIntervals[index];
+               if (isLandscape) {
+                   bar.style.height = totalDuration > 0 ? `${(interval.duration / totalDuration) * 100}%` : '0%';
+                   bar.style.width = '100%';
+               } else {
+                   bar.style.width = totalDuration > 0 ? `${(interval.duration / totalDuration) * 100}%` : '0%';
+                   // Height is reset by removing inline style, letting CSS class take over
+                   bar.style.height = '';
+               }
+           });
+
+           // Move segment progress bar container based on orientation
+           if (isLandscape) {
+                chartContainer.insertBefore(segmentProgressBarContainer, progressIndicator); // Place it before indicator in landscape
+                segmentProgressBarContainer.style.width = '10%';
+                segmentProgressBarContainer.style.height = '100%';
+           } else {
+                chartContainer.appendChild(segmentProgressBarContainer); // Place it after chart div in portrait
+                segmentProgressBarContainer.style.width = '100%';
+                segmentProgressBarContainer.style.height = '10%';
+           }
+
+           updateProgressVisuals(); // Update progress indicator position
+           updateSegmentProgressBar(); // Update segment bar fill direction/size
+      }
+  }
+  window.matchMedia("(orientation: landscape)").addEventListener("change", handleOrientationChange);
+
+
+  // --- Initial Setup ---
+  document.addEventListener('DOMContentLoaded', () => {
+      loadData(); // Load workouts and paces
+      populateAllZoneSelects(); // Populate dropdowns in create form
+      displayWorkoutList(); // Display loaded workouts
+      updatePeriodInputVisibility(); // Set initial create form state
+      showScreen('workoutListScreen'); // Start on the list screen
+
+      // Attempt to resume audio context on first user interaction (any button click)
+      // This is crucial for iOS Safari
+      document.body.addEventListener('click', initAudioContext, { once: true });
+      document.body.addEventListener('touchstart', initAudioContext, { once: true }); // Also for touch
+
+      // Initial orientation check
+      handleOrientationChange();
+  });
+
+</script>
+
+</body>
+</html>
