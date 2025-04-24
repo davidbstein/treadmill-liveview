@@ -965,8 +965,8 @@
     // Add warmup/cooldown indicators if they exist
     const hasWarmup = periods.some(p => p.type === 'warmup');
     const hasCooldown = periods.some(p => p.type === 'cooldown');
-    if (hasWarmup) label = "WU + " + label;
-    if (hasCooldown) label = label + " + CD";
+    // if (hasWarmup) label = "WU + " + label;
+    // if (hasCooldown) label = label + " + CD";
 
     return label;
   }
